@@ -1,0 +1,15 @@
+README.md
+setup.py
+tests/test_modes.py
+tests/test_mzi.py
+tests/test_taper.py
+waveguide/__init__.py
+waveguide/modes.py
+waveguide/mzi.py
+waveguide/platform.py
+waveguide/taper.py
+waveguide.egg-info/PKG-INFO
+waveguide.egg-info/SOURCES.txt
+waveguide.egg-info/dependency_links.txt
+waveguide.egg-info/requires.txt
+waveguide.egg-info/top_level.txt
