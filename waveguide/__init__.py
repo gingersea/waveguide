@@ -5,7 +5,8 @@ Modules
 -------
 platform  – Material constants and process parameters.
 modes     – Slab-mode solver and Effective Index Method for strip waveguides.
-taper     – SM-to-MM adiabatic taper designs (linear, parabolic, Gaussian).
+taper     – SM-to-MM adiabatic taper designs (linear, parabolic, Gaussian,
+             optimal equi-adiabatic, sub-wavelength grating).
 mzi       – Low-loss asymmetric MZI with multimode long arms.
 """
 
@@ -20,7 +21,16 @@ from .platform import (
     LOSS_MM_DB_PER_CM,
 )
 from .modes import solve_slab_te, effective_indices, group_index
-from .taper import LinearTaper, ParabolicTaper, GaussianTaper, compare_tapers, minimum_adiabatic_length
+from .taper import (
+    LinearTaper,
+    ParabolicTaper,
+    GaussianTaper,
+    OptimalAdiabaticTaper,
+    SubwavelengthGratingTaper,
+    swg_effective_index,
+    compare_tapers,
+    minimum_adiabatic_length,
+)
 from .mzi import AsymmetricMZI
 
 __all__ = [
@@ -41,6 +51,9 @@ __all__ = [
     "LinearTaper",
     "ParabolicTaper",
     "GaussianTaper",
+    "OptimalAdiabaticTaper",
+    "SubwavelengthGratingTaper",
+    "swg_effective_index",
     "compare_tapers",
     "minimum_adiabatic_length",
     # MZI

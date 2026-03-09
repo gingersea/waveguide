@@ -27,7 +27,10 @@ arms switch to multimode via adiabatic tapers.
 waveguide/
 ├── platform.py   – ANT NanoSOI material constants and loss figures
 ├── modes.py      – Slab-mode solver + Effective Index Method (EIM)
-├── taper.py      – SM-to-MM adiabatic tapers: linear, parabolic, Gaussian
+├── taper.py      – SM-to-MM adiabatic tapers:
+│                   linear, parabolic, Gaussian,
+│                   OptimalAdiabaticTaper (equi-adiabatic, most compact),
+│                   SubwavelengthGratingTaper (SWG / digital metamaterial)
 └── mzi.py        – Asymmetric MZI: loss budget, FSR, transmission spectrum
 
 tests/
@@ -110,20 +113,67 @@ wl, T_thru, T_cross = mzi.transmission(n_points=500)
 
 ### SM-to-MM adiabatic taper
 
-Three taper profiles are implemented.  All start at 450 nm (single-mode) and
-end at 2 µm (multimode) with 220 nm Si height.
+Five taper profiles are implemented.  All transition from 450 nm (single-mode)
+to 2 µm (multimode) on the 220 nm Si / SiO₂ platform.
 
-| Profile | dw/dz at narrow end | Peak α (50 µm) | IL (50 µm) |
-|---|---|---|---|
-| Linear | constant | 0.057 | 0.022 dB |
-| Parabolic | 0 | 0.114 | 0.034 dB |
-| Gaussian (σ=2) | ≈ 0 | 0.094 | 0.035 dB |
+| Profile | Key property | Min adiabatic length |
+|---|---|---|
+| `LinearTaper` | constant dw/dz | ~29 µm |
+| `ParabolicTaper` | dw/dz = 0 at narrow end | ~57 µm |
+| `GaussianTaper` (σ=2) | smooth S-shape | ~47 µm |
+| **`OptimalAdiabaticTaper`** | **constant α(z); most compact** | **~19 µm** |
+| `SubwavelengthGratingTaper` | discrete pixels; ultra-compact footprint | — |
 
 Adiabaticity criterion: `α(z) = |dw/dz| / (Δβ(w) × w) < 0.1`.
 
-The **Gaussian** taper is recommended: it has near-zero slope at the narrow
-end (where Δβ is smallest) and approaches the single-mode cutoff gently,
-limiting inter-modal coupling in the critical region.
+#### OptimalAdiabaticTaper (equi-adiabatic)
+
+*From: "Efficient adiabatic silicon-on-insulator waveguide taper"*
+
+Width profile obtained by numerically integrating the Snyder–Love criterion
+with constant α:
+
+```
+dz/dw = 1 / (α_target × Δβ(w) × w)
+```
+
+This is the most compact profile for a given loss budget — it makes full use
+of the permitted local coupling everywhere, achieving adiabaticity in ~19 µm
+vs. ~29 µm for a linear taper.
+
+```python
+from waveguide import OptimalAdiabaticTaper
+
+t = OptimalAdiabaticTaper(alpha_target=0.05)
+print(f"Natural length: {t.natural_length_um:.1f} µm")
+print(t.summary())
+```
+
+#### SubwavelengthGratingTaper (digital metamaterial)
+
+*From: "Adiabatic and Ultracompact Waveguide Tapers Based on Digital
+Metamaterials"*
+
+The taper consists of `n_segments` discrete silicon cells (pitch `period_um`).
+Each cell's fill factor `ff(z)` varies from `ff_start = w_start/w_end` to 1.0,
+giving an effective silicon width `w_eff = ff × w_end`.  The TE effective
+medium index at each cell is:
+
+```
+n_eff(ff) = sqrt(ff × n_Si² + (1-ff) × n_SiO₂²)
+```
+
+Because `period_um < λ/(2 n_Si) ≈ 0.22 µm`, no diffraction occurs and the
+structure acts as a graded-index medium.
+
+```python
+from waveguide import SubwavelengthGratingTaper, swg_effective_index
+
+t = SubwavelengthGratingTaper(length_um=10.0, period_um=0.200)
+print(f"N segments: {t.n_segments}, sub-wavelength: {t.is_subwavelength()}")
+print(f"EMT index at ff=0.5 (TE): {swg_effective_index(0.5):.3f}")
+print(t.summary())
+```
 
 ### Asymmetric MZI layout
 
