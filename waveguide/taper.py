@@ -109,20 +109,33 @@ class _BaseTaper:
         if z_points is None:
             z_points = np.linspace(0, self.length_um, n_points)
 
-        dz = self.length_um / n_points
-        alpha = np.empty_like(z_points)
-        for i, z in enumerate(z_points):
+        # Use local point spacing for the derivative; fall back to a uniform
+        # step when only one point is provided.
+        z_arr = np.asarray(z_points, dtype=float)
+        n = len(z_arr)
+        alpha = np.empty(n)
+        for i, z in enumerate(z_arr):
+            # Central-difference step: use half the spacing to the nearest
+            # neighbour so the derivative stays within [0, length_um].
+            if n > 1:
+                h_left = z - z_arr[i - 1] if i > 0 else z_arr[1] - z_arr[0]
+                h_right = z_arr[i + 1] - z if i < n - 1 else z_arr[-1] - z_arr[-2]
+                dz_local = (h_left + h_right) / 2
+            else:
+                dz_local = self.length_um / 200  # fallback for single point
+            z_lo = max(z - dz_local / 2, 0.0)
+            z_hi = min(z + dz_local / 2, self.length_um)
+            actual_dz = z_hi - z_lo if z_hi > z_lo else dz_local
             w = float(self.width_profile(z))
             dw_dz = float(
-                (self.width_profile(min(z + dz / 2, self.length_um))
-                 - self.width_profile(max(z - dz / 2, 0.0))) / dz
+                (self.width_profile(z_hi) - self.width_profile(z_lo)) / actual_dz
             )
             db = _delta_beta(w, self.height_um, self.n_core, self.n_clad,
                               self.wavelength_um)
             # Guard against division by zero
             denominator = db * w if db * w > 1e-12 else 1e-12
             alpha[i] = abs(dw_dz) / denominator
-        return z_points, alpha
+        return z_arr, alpha
 
     def is_adiabatic(self, threshold: float = 0.1) -> bool:
         """Return True if max α(z) < threshold everywhere along the taper."""
@@ -145,6 +158,7 @@ class _BaseTaper:
         perform better.
         """
         z_arr, alpha = self.adiabaticity(n_points=n_points)
+        # numpy renamed trapz → trapezoid in version 2.0; support both.
         _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
         eta = float(np.exp(-np.pi * _trapz(alpha**2, z_arr) / self.length_um))
         return min(max(eta, 0.0), 1.0)
@@ -233,7 +247,8 @@ class GaussianTaper(_BaseTaper):
     profile that limits dw/dz near the narrow end (where Δβ is small and
     mode coupling is strongest) and compresses the design length compared
     with the linear taper.  σ = 2 gives a moderately smooth transition;
-    increasing σ towards the linear limit.
+    increasing σ sharpens the central transition and approaches the step-like
+    limit.
 
     Parameters
     ----------

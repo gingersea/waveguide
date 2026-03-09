@@ -47,7 +47,12 @@ def _te_characteristic(kappa, n_core, n_clad, h_um, wavelength_um, even: bool):
     even         : True for even modes (TE₀, TE₂, …), False for odd modes
     """
     k0 = 2 * np.pi / wavelength_um
-    gamma = np.sqrt(max(k0**2 * (n_core**2 - n_clad**2) - kappa**2, 0.0))
+    discriminant = k0**2 * (n_core**2 - n_clad**2) - kappa**2
+    if discriminant < 0:
+        # kappa is outside the guided-mode range; return a large residual so
+        # the root-finder rejects this point rather than silently clamping.
+        return 1e6
+    gamma = np.sqrt(discriminant)
     if even:
         return np.tan(kappa * h_um / 2) - gamma / kappa
     else:
