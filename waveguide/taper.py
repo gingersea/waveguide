@@ -301,12 +301,13 @@ def swg_effective_index(
           n_TM  = 1 / √( ff / n_core² + (1 − ff) / n_clad² )
 
     The zeroth-order approximation holds when the grating period
-    Λ ≪ λ / (2 n_core), i.e., no grating diffraction occurs.
+    ``period_um`` ≪ λ / (2 n_core), i.e., no grating diffraction occurs.
 
     Parameters
     ----------
     fill_factor  : fraction of the grating period occupied by the core
-                   material (silicon), in [0, 1].  May be a scalar or array.
+                   material (silicon).  Must be in [0, 1]; a ValueError is
+                   raised for out-of-range values.  May be a scalar or array.
     n_core       : refractive index of the core material (default Si at 1550 nm).
     n_clad       : refractive index of the cladding (default SiO₂ at 1550 nm).
     polarization : "TE" (default) or "TM".
@@ -321,7 +322,12 @@ def swg_effective_index(
     Rytov, S. M. (1956). "Electromagnetic properties of a finely stratified
     medium." Soviet Physics JETP, 2(3), 466–475.
     """
-    ff = np.clip(np.asarray(fill_factor, dtype=float), 0.0, 1.0)
+    ff_arr = np.asarray(fill_factor, dtype=float)
+    if np.any(ff_arr < 0.0) or np.any(ff_arr > 1.0):
+        raise ValueError(
+            f"fill_factor must be in [0, 1]; got values outside this range."
+        )
+    ff = ff_arr  # already validated; no clipping needed
     pol = polarization.upper()
     if pol == "TE":
         result = np.sqrt(ff * n_core**2 + (1.0 - ff) * n_clad**2)
@@ -393,6 +399,10 @@ class OptimalAdiabaticTaper(_BaseTaper):
                 w, self.height_um, self.n_core, self.n_clad, self.wavelength_um
             )
             denom = self.alpha_target * db * w
+            # Guard: skip the z-contribution at widths where Δβ ≈ 0 to avoid
+            # division by zero.  The threshold 1e-14 µm⁻² is many orders of
+            # magnitude smaller than any physically meaningful Δβ × w product
+            # (typically ≥ 0.1 µm⁻²), so it only activates in degenerate cases.
             dz_dw[i] = 1.0 / denom if abs(denom) > 1e-14 else 0.0
 
         # Cumulative trapezoidal integration
@@ -540,7 +550,8 @@ class SubwavelengthGratingTaper(_BaseTaper):
         Cell centres are at z = (i + 0.5) × period_um for i = 0, …, N−1.
         """
         z_centres = (np.arange(self.n_segments) + 0.5) * self.period_um
-        return np.asarray([float(self.fill_factor(z)) for z in z_centres])
+        # fill_factor() accepts arrays directly, avoiding a Python-level loop
+        return np.asarray(self.fill_factor(z_centres), dtype=float)
 
     # ── Width profile (effective silicon width) ───────────────────────────────
 

@@ -171,7 +171,7 @@ from waveguide import SubwavelengthGratingTaper, swg_effective_index
 
 t = SubwavelengthGratingTaper(length_um=10.0, period_um=0.200)
 print(f"N segments: {t.n_segments}, sub-wavelength: {t.is_subwavelength()}")
-print(f"EMT index at ff=0.5 (TE): {swg_effective_index(0.5):.3f}")
+print(f"EMT index at ff=0.5 (TE): {swg_effective_index(0.5, polarization='TE'):.3f}")
 print(t.summary())
 ```
 
