@@ -1,6 +1,0 @@
-Metadata-Version: 2.1
-Name: waveguide
-Version: 0.1.0
-Summary: Silicon photonics design library: SM-to-MM adiabatic tapers and low-loss asymmetric MZI on the ANT NanoSOI platform.
-Requires-Python: >=3.9
-Provides-Extra: dev
